@@ -1,16 +1,17 @@
 eeglab
 
-filePath = 'C:\Users\admin\Desktop\MATLAB_Analysis\'; % go to folder where data file is, hold shift, right click, click "Copy as path", paste it between the single quotes
+filePath = "C:\Users\admin\Desktop\GitHub Repos\EEG-Pipeline-MATLAB"; % go to folder where data file is, hold shift, right click, click "Copy as path", paste it after the '='
 fileName = 'MUAD06022021EOFull';
 fileType = '.xdf';
-fullPath = strcat(filePath, fileName, fileType);
+fullPath = strcat(filePath, "\", fileName, fileType);
+mkdir figures
 
 % load data
-if fileType == '.set'
+if strcmp(fileType, '.set')
     EEG = pop_loadset(fullPath)
-elseif fileType == '.xdf'
+elseif strcmp(fileType, '.xdf')
     EEG = pop_loadxdf(fullPath)
-elseif fileType == '.edf'
+elseif strcmp(fileType, '.edf')
     EEG = pop_biosig(fullPath)
 end
 
@@ -20,6 +21,9 @@ EEG = eeg_checkset( EEG );
 EEG = pop_chanedit(EEG, 'lookup','C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc');
 EEG = eeg_checkset( EEG );
 
+originalEEG = EEG;
+
+%{
 % remove DC offset
 removeDC = true;
 freqHP = 0.5;
@@ -30,7 +34,12 @@ filtOrder = 3*fix(sRate/freqHP);
 if removeDC == true
     EEG = pop_eegfiltnew( EEG, 'locutoff',  freqHP, 'hicutoff', freqLP, 'filtorder', filtOrder);
 end
+%}
 
+cleanEEG = clean_rawdata(EEG, -1, [0.25 0.75], -1, -1, 5, 0.25);
+ cleaned1 = vis_artifacts(cleanEEG,EEG);
+ saveas(gcf, 'figures\firstPassArtifacting.png', 'png');
+    
 % set average reference
 EEG.nbchan = EEG.nbchan+1;
 EEG.data(end+1,:) = zeros(1, EEG.pnts);
