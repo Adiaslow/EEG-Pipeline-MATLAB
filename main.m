@@ -1,7 +1,8 @@
 eeglab
 
-filePath = "C:\Users\admin\Desktop\GitHub Repos\EEG-Pipeline-MATLAB";
-% go to folder where data file is, hold shift, right click, click "Copy as path", paste it after the '='
+filePath = 'C:\Users\admin\Desktop\GitHub-Repos\EEG-Pipeline-MATLAB';
+% go to folder where data file is, hold shift, right click, click "Copy as
+% path", paste it after the '=' and replace the (")s with (')s
 fileName = 'MUAD06022021EOFull2';
 fileType = '.xdf';
 fullPath = strcat(filePath, filesep, fileName, fileType);
@@ -29,7 +30,22 @@ EEG = eeg_checkset( EEG );
 EEG = pop_chanedit(EEG, 'lookup','C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc');
 EEG = eeg_checkset( EEG );
 
+% remove DC offset
+freqHP = 1;
+freqLP = 0;
+sRate = EEG.srate();
+filtOrder = 3*fix(sRate/freqHP);
+EEG = pop_eegfiltnew( EEG, 'locutoff',  freqHP, 'hicutoff', freqLP, 'filtorder', filtOrder);
+
+
 originalEEG = EEG;
+
+% clean data
+% remove artifacts
+EEG = clean_rawdata(EEG, -1, -1, -1, -1, 5, 0.25);
+% EEG = clean_rawdata(EEG, arg_flatline, arg_highpass, arg_channel, arg_noisy, arg_burst, arg_window)
+vis_artifacts(EEG, originalEEG);
+saveas(gcf, 'figures\first_pass_artifacting.png', 'png');
 
 % set average reference
 EEG.nbchan = EEG.nbchan+1;
@@ -38,36 +54,32 @@ EEG.chanlocs(1,EEG.nbchan).labels = 'initialReference';
 EEG = pop_reref(EEG, []);
 EEG = pop_select( EEG,'nochannel',{'initialReference'});
 
-% clean data
-% remove artifacts
-EEG = clean_rawdata(EEG, 'off', [0.25 0.75], 'off', 'off', 5, 1);
-vis_artifacts(EEG, originalEEG);
-saveas(gcf, 'figures\first_pass_artifacting.png', 'png');
-
-%{
-% remove line noise
-signal = struct('data', EEG.data, 'srate', EEG.srate);
-lineNoiseIn = struct('lineNoiseMethod', 'clean', 'lineNoiseChannels', 1:EEG.nbchan, 'Fs', EEG.srate, ...
-                     'lineFrequencies', [60 120 180 240], 'p', 0.01, 'fScanBandWidth', 2, 'taperBandWidth', 2, ...
-                     'taperWindowSize', 4, 'taperWindowStep', 1, 'tau', 100, 'pad', 2, 'fPassBand', [0 EEG.srate/2], ...
-                     'maximumIterations', 10);
-                 
-[clnOutput, lineNoiseOut] = cleanLineNoise(signal, lineNoiseIn);
-EEG.data = clnOutput.data;
-    
-    
-vis_artifacts(EEG, EEG2);
-saveas(gcf, 'figures\remove_linenoise.png', 'png');
-%}
+EEGset = pop_saveset(EEG,[filePath, filesep, fileName, '.set']);
 
 % run AMICA
+%{
 numprocs = 1;
 max_threads = 1;
 num_models = 1;
 max_iter = 100;
 
-outdir = [ filePath, 'amicaouttmp' filesep ];
 
-[weights,sphere,mods] = runamica15(EEG.data, 'num_models',num_models, 'outdir',outdir, 'numprocs', numprocs, ...
-                                   'max_threads', max_threads, 'max_iter',max_iter);
 
+[EEG.weights, EEG.sphere, EEG.mods] = runamica15(EEG.data, 'num_models', num_models, 'outdir', outdir, 'numprocs', numprocs, ...
+                                   'max_threads', max_threads, 'max_iter', max_iter);
+
+                               % save the data and fill datfile field in EEG
+
+EEG = pop_saveset(EEG,[pwd '/mydata.set']);
+
+
+%}
+
+% run amica with blocksize optimization and rejection
+outdir = [ filePath, filesep, 'amicaout', filesep ];
+[EEG.weights, EEG.sphere, EEG.mods] = runamica15(EEGset, 'outdir', outdir, 'do_opt_block', 1, 'num_models', 1, 'do_reject', 1, 'rejstart', 1, ...
+           'rejint', 1, 'numrej', 15, 'rejsig', 3, 'max_iter', 2500, 'writestep', 50);
+
+% load the amica results into EEG
+
+EEG = eeg_loadamica(EEG,'.\amicaout');
