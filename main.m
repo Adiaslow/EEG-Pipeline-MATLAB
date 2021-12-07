@@ -1,4 +1,7 @@
-eeglab
+eeglab;
+
+addpath ('C:\Users\admin\Desktop\GitHub-Repos\EEG-Pipeline-MATLAB');
+cd('C:\Users\admin\Desktop\GitHub-Repos\EEG-Pipeline-MATLAB');
 
 filePath = 'C:\Users\admin\Desktop\GitHub-Repos\EEG-Pipeline-MATLAB';
 % go to folder where data file is, hold shift, right click, click "Copy as
@@ -6,16 +9,24 @@ filePath = 'C:\Users\admin\Desktop\GitHub-Repos\EEG-Pipeline-MATLAB';
 fileName = 'MUAD06022021EOFull2';
 fileType = '.xdf';
 fullPath = strcat(filePath, filesep, fileName, fileType);
-mkdir figures
+mkdir figures;
+
+disp('*********************************************************************')
+disp('Loading Data')
+disp('*********************************************************************')
 
 % load data
 if strcmp(fileType, '.set')
-    EEG = pop_loadset(fullPath)
+    EEG = pop_loadset(fullPath);
 elseif strcmp(fileType, '.xdf')
-    EEG = pop_loadxdf(fullPath)
+    EEG = pop_loadxdf(fullPath);
 elseif strcmp(fileType, '.edf')
-    EEG = pop_biosig(fullPath)
+    EEG = pop_biosig(fullPath);
 end
+
+disp('*********************************************************************')
+disp('Setting Channel Locations')
+disp('*********************************************************************')
 
 % set channel locations
 EEG = pop_chanedit(EEG, 'lookup','C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc', ...
@@ -30,15 +41,27 @@ EEG = eeg_checkset( EEG );
 EEG = pop_chanedit(EEG, 'lookup','C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc');
 EEG = eeg_checkset( EEG );
 
+eeglab redraw;
+
+disp('*********************************************************************')
+disp('Removing DC Offset')
+disp('*********************************************************************')
+
 % remove DC offset
-freqHP = 1;
-freqLP = 0;
-sRate = EEG.srate();
-filtOrder = 3*fix(sRate/freqHP);
-EEG = pop_eegfiltnew( EEG, 'locutoff',  freqHP, 'hicutoff', freqLP, 'filtorder', filtOrder);
+freqHP = 0.5;
+freqLP = 70;
+sRate = 256;
+filtOrder = 5 * fix(sRate/freqHP)
+EEG = pop_eegfiltnew( EEG, 'locutoff',  freqHP, 'hicutoff', freqLP, 'filtorder', filtOrder, 'plotfreqz', 0);
 
 
 originalEEG = EEG;
+
+eeglab redraw;
+
+disp('*********************************************************************')
+disp('Cleaning Data')
+disp('*********************************************************************')
 
 % clean data
 % remove artifacts
@@ -47,39 +70,55 @@ EEG = clean_rawdata(EEG, -1, -1, -1, -1, 5, 0.25);
 vis_artifacts(EEG, originalEEG);
 saveas(gcf, 'figures\first_pass_artifacting.png', 'png');
 
+eeglab redraw;
+
+disp('*********************************************************************')
+disp('Setting Average Reference')
+disp('*********************************************************************')
+
 % set average reference
 EEG.nbchan = EEG.nbchan+1;
 EEG.data(end+1,:) = zeros(1, EEG.pnts);
 EEG.chanlocs(1,EEG.nbchan).labels = 'initialReference';
 EEG = pop_reref(EEG, []);
 EEG = pop_select( EEG,'nochannel',{'initialReference'});
-
+disp(['Number of channels = ', EEG.nbchan])
 EEGset = pop_saveset(EEG,[filePath, filesep, fileName, '.set']);
 
+eeglab redraw;
+
+disp('*********************************************************************')
+disp('Running AMICA')
+disp('*********************************************************************')
+
 % run AMICA
-%{
-numprocs = 1;
-max_threads = 1;
-num_models = 1;
-max_iter = 100;
 
+setName = [fileName, '.set'];
+EEG = pop_loadset(setName);
 
+    % define parameters
+    numprocs = 1;       % # of nodes (default = 1)
+    max_threads = 1;    % # of threads per node
+    num_models = 1;     % # of models of mixture ICA
+    max_iter = 2000;    % max number of learning steps
 
-[EEG.weights, EEG.sphere, EEG.mods] = runamica15(EEG.data, 'num_models', num_models, 'outdir', outdir, 'numprocs', numprocs, ...
-                                   'max_threads', max_threads, 'max_iter', max_iter);
-
+    % run amica
+    outdir = [ pwd filesep 'amicaouttmp' filesep ];
+    [weights,sphere,mods] = runamica15(EEG.data, 'outdir',outdir);
                                % save the data and fill datfile field in EEG
 
 EEG = pop_saveset(EEG,[pwd '/mydata.set']);
 
-
-%}
-
+%{
 % run amica with blocksize optimization and rejection
 outdir = [ filePath, filesep, 'amicaout', filesep ];
-[EEG.weights, EEG.sphere, EEG.mods] = runamica15(EEGset, 'outdir', outdir, 'do_opt_block', 1, 'num_models', 1, 'do_reject', 1, 'rejstart', 1, ...
-           'rejint', 1, 'numrej', 15, 'rejsig', 3, 'max_iter', 2500, 'writestep', 50);
+numChans = EEG.nbchan;
+arglist = {'outdir', outdir, 'num_chans',  numChans, 'pcakeep', numChans, 'max_threads', 2};
+[weights, sphere, mods] = runamica15(EEG.data(:,:), arglist{:});
+EEG.icaweights = W; EEG.icasphere = S(1:size(W,1),:);
+EEG.icawinv = mods.A(:,:,1); EEG.mods = mods;
 
 % load the amica results into EEG
 
 EEG = eeg_loadamica(EEG,'.\amicaout');
+%}
