@@ -182,13 +182,9 @@ function main ()
         arg_burst    = 5;
         arg_window   = 0.25;
         
-        EEG = clean_rawdata( EEG,                          ...
-                             'arg_flatline', arg_flatline, ...
-                             'arg_highpass', arg_highpass, ...
-                             'arg_channel',  arg_channel,  ...
-                             'arg_noisy',    arg_noisy,    ...
-                             'arg_burst',    arg_burst,    ...
-                             'arg_window',   arg_window );
+        EEG = clean_rawdata( EEG,         arg_flatline, arg_highpass, ...
+                             arg_channel, arg_noisy,    arg_burst,    ...
+                             arg_window );
         
         vis_artifacts( EEG, origEEG );
         
@@ -202,7 +198,7 @@ function main ()
     end
 
     %% Set Average Reference
-    function [ EEG, FILE_SET ] = setAveRef ( EEG )
+    function [ EEG ] = setAveRef ( EEG, FILE_PATH, FILE_NAME )
 
         tic
         fprintf( "\n" )
@@ -222,9 +218,6 @@ function main ()
         EEG = pop_select( EEG, 'nochannel', { 'initialReference' } );
         
         disp( strcat( "Number of channels = ", string( EEG.nbchan ) ) )
-        
-        FILE_SET = pop_saveset( EEG, ...
-                                [ filePath, filesep, fileName, ".set" ] );
 
         eeglab redraw;
         
@@ -251,39 +244,10 @@ function main ()
         disp( "*                     Running AMICA                     *" )
         disp( "*********************************************************" )
         fprintf( "\n" )
-
-        setName = [ fileName, '.set' ];
-        EEG = pop_loadset( setName );
-
-            % define parameters
-            numprocs = 1;       % # of nodes (default = 1)
-            max_threads = 1;    % # of threads per node
-            num_models = 1;     % # of models of mixture ICA
-            max_iter = 2000;    % max number of learning steps
-
-            % run amica
-            outdir = [ pwd, filesep, 'amicaouttmp', filesep ];
-            [ weights, sphere, mods ] = runamica15( EEG.data, 'outdir', ...
-                                                    outdir );
-                                                
-            % save the data and fill datfile field in EEG
-
-            EEG = pop_saveset( EEG, [ pwd, '/mydata.set' ] );
-
-        %{
-        % run amica with blocksize optimization and rejection
-        outdir = [ filePath, filesep, 'amicaout', filesep ];
-        numChans = EEG.nbchan;
-        arglist = {'outdir', outdir, 'num_chans',  numChans, 'pcakeep', numChans, 'max_threads', 2};
-        [weights, sphere, mods] = runamica15(EEG.data(:,:), arglist{:});
-        EEG.icaweights = W; EEG.icasphere = S(1:size(W,1),:);
-        EEG.icawinv = mods.A(:,:,1); EEG.mods = mods;
-
-        % load the amica results into EEG
-
-        EEG = eeg_loadamica(EEG,'.\amicaout');
-        %}
         
+        
+        
+       
         eeglab redraw;
         
         fprintf( "\n" )
@@ -337,13 +301,13 @@ function main ()
         EEG = cleanData( EEG, origEEG );
         
         % Set Average Reference
-        [ EEG, FILE_SET ] = setAveRef( EEG );
+        [ EEG ] = setAveRef( EEG, FILE_PATH, FILE_NAME );
         
         % Run ICA
-        runICA( EEG );
+        % runICA( EEG );
         
         % Run AMICA
-        % runAMICA( EEG );
+        runAMICA( EEG );
         
         % Run Dipole Fitting
         runDipoFit( EEG );
