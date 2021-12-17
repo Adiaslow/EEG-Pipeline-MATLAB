@@ -1,5 +1,4 @@
 % EEG Preprocessing Pipeline
-% by Adam Murray
 % 11/2021 - Present
 
 % Inspiration from Nick, Makoto Miyakoshi,
@@ -58,19 +57,19 @@ function main ()
         
         switch FILE_TYPE
 
-            case ".set"
+            case ".set" % Check if file is .set
 
-                EEG = pop_loadset( FILE_FULL );
+                EEG = pop_loadset( FILE_FULL ); % Load data as .set
                 disp( "File Format is .SET" )
 
-            case ".xdf"
+            case ".xdf" % Check if file is .xdf
 
-                EEG = pop_loadxdf( FILE_FULL );
+                EEG = pop_loadxdf( FILE_FULL ); % Load data as .edf
                 disp( "File Format is .XDF" )
 
-            case ".edf"
+            case ".edf" % Check if file is .edf
 
-                EEG = pop_biosig( FILE_FULL );
+                EEG = pop_biosig( FILE_FULL ); % Load data as .edf
                 disp( "File Format is .EDF" )
 
             otherwise
@@ -229,7 +228,14 @@ function main ()
     %% Run ICA
     function [ EEG ] = runICA( EEG )
         
-        pop_runica(EEG, 'extended',1,'interupt','on');
+        tic
+        fprintf( "\n" )
+        disp( "*********************************************************" )
+        disp( "*                      Running ICA                      *" )
+        disp( "*********************************************************" )
+        fprintf( "\n" )
+        
+        pop_runica(EEG, 'extended', 1, 'interupt', 'on');
         
         disp( strcat( "Execution Time = ", string( toc ), " seconds" ) )
         
@@ -265,6 +271,11 @@ function main ()
         disp( "*********************************************************" )
         fprintf( "\n" )
 
+        EEG = pop_dipfit_settings( EEG, 'hdmfile','C:\\eeglab2021_0\\plugins\\dipfit3.3\\standard_BEM\\standard_vol.mat','coordformat','MNI','mrifile','C:\\eeglab2019_0\\plugins\\dipfit3.3\\standard_BEM\\standard_mri.mat','chanfile','C:\\eeglab2019_0\\plugins\\dipfit3.3\\standard_BEM\\elec\\standard_1005.elc','coord_transform',[0 0 0 0 0 -1.5708 1 1 1] ,'chansel',[1:19] );
+        [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
+        EEG = pop_multifit(EEG, [1:18] ,'threshold',100,'plotopt',{'normlen' 'on'});
+        [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
+        
         eeglab redraw;
         
         fprintf( "\n" )
@@ -304,10 +315,10 @@ function main ()
         [ EEG ] = setAveRef( EEG, FILE_PATH, FILE_NAME );
         
         % Run ICA
-        % runICA( EEG );
+        runICA( EEG );
         
         % Run AMICA
-        runAMICA( EEG );
+        % runAMICA( EEG );
         
         % Run Dipole Fitting
         runDipoFit( EEG );
