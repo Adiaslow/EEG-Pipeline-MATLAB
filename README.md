@@ -1,11 +1,11 @@
 # EEG Pipeline MATLAB
 by Adam Murray
 
-### Description
+### Description:
 
 This is a preprocessing pipeline written in MATLAB primarily using EEGLAB functions.
 
-### Status
+### Current Status:
 I am currently working on getting AMICA to work.
 
 Running into the error:
