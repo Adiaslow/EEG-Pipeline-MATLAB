@@ -1,7 +1,7 @@
 % EEG Preprocessing Pipeline
 % 11/2021 - Present
 
-% Inspiration from Nick, Makoto Miyakoshi, and others.
+% Inspiration from Nick, Makoto Miyakoshi,
 
 % This script is an automated pipeline for preprocessing EEG data
 % Steps: Load Data, Set Channel Locations, Remove DC Offset, Clean Data,
@@ -85,13 +85,13 @@ function main ()
                 EEG = pop_biosig( FILE_FULL ); % Load data as .edf
                 disp( "File Format is .EDF" )
 
-            otherwise % If is none of the above, throws error
+            otherwise
                 disp( "File Format is INVALID" )
                 disp( "Stopping Script" )
 
         end
         
-        % Reloads EEGLAB
+        % reloads eeglab
         eeglab redraw
 
         fprintf( "\n" )
@@ -138,8 +138,7 @@ function main ()
                             'C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc' );
 
         EEG = eeg_checkset( EEG );
-        
-        % Reloads EEGLAB
+
         eeglab redraw;
         
         fprintf( "\n" )
@@ -225,7 +224,6 @@ function main ()
         disp( "*********************************************************" )
         fprintf( "\n" )
 
-        % (Credit to Makoto Mikyakoshi)
         EEG.nbchan = EEG.nbchan+1;
         
         EEG.data( end+1, : ) = zeros( 1, EEG.pnts );
