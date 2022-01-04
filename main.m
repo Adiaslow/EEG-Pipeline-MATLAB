@@ -1,4 +1,5 @@
 % EEG Preprocessing Pipeline
+% By Adam Murray
 % 11/2021 - Present
 
 % Inspiration from Nick, Makoto Miyakoshi, and others.
@@ -282,7 +283,7 @@ function main ()
     end
 
     %% Run Dipole Fitting
-    function runDipoFit ()
+    function runDipoFit ( EEG )
 
         tic
         fprintf( "\n" )
@@ -291,9 +292,20 @@ function main ()
         disp( "*********************************************************" )
         fprintf( "\n" )
 
-        EEG = pop_dipfit_settings( EEG, 'hdmfile','C:\\eeglab2021_0\\plugins\\dipfit3.3\\standard_BEM\\standard_vol.mat','coordformat','MNI','mrifile','C:\\eeglab2019_0\\plugins\\dipfit3.3\\standard_BEM\\standard_mri.mat','chanfile','C:\\eeglab2019_0\\plugins\\dipfit3.3\\standard_BEM\\elec\\standard_1005.elc','coord_transform',[0 0 0 0 0 -1.5708 1 1 1] ,'chansel',[1:19] );
+        % (Credit to Nick)
+        EEG = pop_dipfit_settings( EEG, 'hdmfile', ...
+                                   'C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\standard_vol.mat', ...
+                                   'coordformat','MNI','mrifile', ...
+                                   'C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\standard_mri.mat', ...
+                                   'chanfile','C:\\eeglab2021.1\\plugins\\dipfit4.3\\standard_BEM\\elec\\standard_1005.elc', ...
+                                   'coord_transform', [0 0 0 0 0 -1.5708 1 1 1], ...
+                                   'chansel', [1:19] );
+                               
         [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
-        EEG = pop_multifit(EEG, [1:18] ,'threshold',100,'plotopt',{'normlen' 'on'});
+        
+        EEG = pop_multifit(EEG, [1:18], 'threshold', 100, ...
+                           'plotopt', {'normlen' 'on'});
+                       
         [ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
         
         eeglab redraw;
